@@ -2,7 +2,7 @@
 
 Cross-platform MetaPost linter with three passes:
 
-1. **Compiler errors** (parse `.log`, handles `Runaway loop?` heuristics)
+1. **Compiler errors** (parse `.log`)
 2. **Style checks** (semicolon rules, TeX preamble lines)
 3. **Structure checks** (begin/end blocks, delimiters, verbatimtex/btex, simple assignment `=` vs `:=` heuristic)
 
@@ -11,8 +11,8 @@ Diagnostics are emitted as gfortran-style lines:
 file:line:col: Severity: message
 
 ## Requirements
-- Neovim 0.9+ (0.10+ recommended)
-- `mpost` in your `$PATH` (TeX Live / MiKTeX)
+- Neovim (0.11.3 tested)
+- `mpost` in your `$PATH`. It comes with main LaTeX distros (TeX Live / MiKTeX / MacTeX).
 
 ## Install (lazy.nvim)
 ```lua
