@@ -32,5 +32,5 @@ file:line:col: Severity: message
     })
   end,
 }
-
+```
 License: MIT
