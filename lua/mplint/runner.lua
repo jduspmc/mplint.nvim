@@ -1,3 +1,4 @@
+-- TODO change columns to avoid arror stacking. Also add option to make single error or all errors (nonstopmode or exit on error mode)
 -- Runs *inside* Neovim (`nvim -l runner.lua <file.mp>`).
 -- Prints diagnostics to STDERR in: file:line:col: Severity: message
 -- Exit code: 1 if any diagnostics, 0 otherwise.
