@@ -1,38 +1,39 @@
 local M = {}
 
 function M.setup(opts)
-  local lint = require('lint')
-  local parser = require('lint.parser')
+	opts = opts or {}
+	local lint = require("lint")
+	local parser = require("lint.parser")
 
-  -- gfortran-style: file:line:col: Severity: message
-  local pattern = '^([^:]+):(%d+):(%d+):%s+([^:]+):%s+(.*)$'
-  local groups  = { 'file', 'lnum', 'col', 'severity', 'message' }
-  local severity_map = {
-    ['Error']   = vim.diagnostic.severity.ERROR,
-    ['Warning'] = vim.diagnostic.severity.WARN,
-  }
+	-- gfortran-style parser
+	local pattern = "^([^:]+):(%d+):(%d+):%s+([^:]+):%s+(.*)$"
+	local groups = { "file", "lnum", "col", "severity", "message" }
+	local severity_map = {
+		["Error"] = vim.diagnostic.severity.ERROR,
+		["Warning"] = vim.diagnostic.severity.WARN,
+	}
 
-  -- Resolve path to runner.lua in this plugin
-  local here = debug.getinfo(1, 'S').source:sub(2)
-  local runner = here:gsub('init%.lua$', 'runner.lua')
+	-- runner.lua path
+	local here = debug.getinfo(1, "S").source:sub(2)
+	local runner = here:gsub("init%.lua$", "runner.lua")
 
-  -- Filetype for .mp
-  vim.filetype.add({ extension = { mp = 'metapost' } })
+	-- Choose mode argument for the runner (we use our own sentinel flag)
+	local mode_arg = (opts.halt_on_error and "--mplint-halt") or "--mplint-nonstop"
 
-  -- Register the linter with nvim-lint (spawns Neovim as a Lua runner)
-  lint.linters.mplint = {
-    name = 'mplint',
-    cmd  = 'nvim',
-    args = { '-l', runner },
-    stdin = false,
-    append_fname = true,      -- nvim-lint appends current file path
-    stream = 'stderr',
-    ignore_exitcode = true,   -- non-zero exit just means “found diagnostics”
-    parser = parser.from_pattern(pattern, groups, severity_map, { source = 'mplint' }),
-  }
+	-- Use Vim's built-in 'mp' filetype so you keep highlighting
+	lint.linters_by_ft.mp = { "mplint" }
 
-  -- Attach to filetype
-  lint.linters_by_ft.metapost = { 'mplint' }
+	lint.linters.mplint = {
+		name = "mplint",
+		cmd = "nvim",
+		-- We pass our mode flag; nvim-lint will append the filename after these args
+		args = { "-l", runner, "--", mode_arg },
+		stdin = false,
+		append_fname = true,
+		stream = "stderr",
+		ignore_exitcode = true,
+		parser = parser.from_pattern(pattern, groups, severity_map, { source = "mplint" }),
+	}
 end
 
 return M
