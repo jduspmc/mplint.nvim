@@ -91,10 +91,10 @@ MetaPost often **cascades** errors: a single mistake (e.g., a missing `;` or an 
 You can toggle this option at runtime:
 - `:MplintToggleHalt` → It flips the internal runner flag and immediately re-lints the current buffer.
 
-- Keymap (`line_diag_key`)
+- Keymap (`line_diag_key`).
   Default `<leader>gl`. Shows all diagnostics on the current line when runnig with `halt_on_error = false`.
 
-- Filetypes (`filetypes`)
+- Filetypes (`filetypes`).
   Defaults to { 'mp', 'metapost' }.
 
 # Motivation
