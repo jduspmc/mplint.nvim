@@ -16,21 +16,18 @@ file:line:col: Severity: message
 
 ## Install (lazy.nvim)
 ```lua
-{
-  'jduspmc/mplint.nvim',
+return {
+  {
+   'jduspmc/mplint.nvim',
   dependencies = { 'mfussenegger/nvim-lint' },
-  config = function()
-    require('mplint').setup()
-    -- optional: auto-lint on write/leave insert
-    local lint = require('lint')
-    vim.api.nvim_create_autocmd({ 'BufWritePost', 'InsertLeave' }, {
-      callback = function()
-        if vim.bo.filetype == 'metapost' and vim.bo.modifiable then
-          lint.try_lint('mplint')
-        end
-      end,
-    })
-  end,
+    -- optional: lazy-load on mp files
+    event = { 'BufReadPost', 'BufNewFile' },
+    opts = {
+      halt_on_error = false, -- true => halt-on-error
+      line_diag_key = '<leader>gl', -- set false to disable mapping
+      filetypes = { 'mp', 'metapost' },
+    },
+  },
 }
 ```
 License: MIT
