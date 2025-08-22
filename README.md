@@ -14,7 +14,7 @@ file:line:col: Severity: message
 
 ## What is MetaPost?
 
-[MetaPost](https://www.tug.org/metapost.html) is a programming language for creating precise, mathematically-defined vector graphics. It descends from METAFONT and outputs PostScript/EPS, making it superb for diagrams, geometric constructions, plots, and figures.
+[MetaPost](https://www.tug.org/metapost.html) is a programming language for creating vector graphics, designed by Donald Knuth and derived from METAFONT’s ideas but producing PostScript/Encapsulated PostScript output. It’s particularly good at precise, mathematically-defined drawings (diagrams, plots, geometric constructions).
 
 - Official user manual (PDF): **[MetaPost: A User’s Manual](https://www.tug.org/docs/metapost/mpman.pdf)**
 
@@ -23,21 +23,24 @@ file:line:col: Severity: message
 MetaPost (and its TeX heritage) has idiosyncrasies that complicate static linting:
 
 - **Error context lives in the `.log`**  
-  Messages arrive as `! <message>` followed by `l.<n> <fragment>` and sometimes a continuation line. Not every error includes a caret, and columns aren’t reliable.
+  Messages arrive as `! <message>` followed by `l.<n> <fragment>` and sometimes a continuation line. Not every error includes a `<n>` or a stable column.
 
 - **Semicolons are context-sensitive**  
   Many statements need a `;`, but certain tokens at end-of-line (e.g., `endfor`, `fi`, `etex`) legitimately omit it.
 
-- **TeX preamble lines inside MP sources**  
+- **TeX preamble blending**  
   Lines beginning with `\` (e.g., `\documentclass{...}`) are TeX, not MP, and **must not** end with `;`.
 
 - **Opaque regions**  
-  `verbatimtex … etex` and `btex … etex` block scanning.
+  `verbatimtex … etex` and `btex … etex` are treated as black boxes.
 
 - **Balanced construct pairs**  
   Multiple block types span lines and need matching end tokens.
 
-Because of this, **mplint.nvim** parses the `.log` for real compiler errors and augments them with lightweight source heuristics to catch common issues early.
+- **Construct pairs**
+  `beginfig…endfig`, `begingroup…endgroup`, `def/vardef…enddef`, `if…fi`, `for/forsuffixes…endfor`—all of which can be unbalanced across lines.
+
+Because of this, `mplint.nvim` takes a pragmatic approach: it parses the `.log` for true compiler errors, and augments that with lightweight source heuristics (style and structure) to help you catch common mistakes early.
 
 ---
 
@@ -77,15 +80,19 @@ return {
 
 # Options & Commands
 
-halt_on_error
+- `halt_on_error`
+  false (default): run mpost with --interaction=nonstopmode to surface all `.log` errors in one go.
+  true: run with `-halt-on-error`, which stops on the first error (useful when you prefer shorter feedback loops).
 
-false (default): run mpost with --interaction=nonstopmode to surface all .log errors in one go.
+- Keymap (`line_diag_key`)
+  Default `<leader>gl`. Shows all diagnostics on the current line:
 
-true: run with --halt-on-error to stop at the first error.
+- Filetypes (`filetypes`)
+  Defaults to { 'mp', 'metapost' }. Adjust to your setup if needed.
 
-Keymap (line_diag_key)
-
-Default <leader>gl. Shows all diagnostics on the current line:
+## Runtime toggle
+- `:MplintToggleHalt`
+  It flips the internal runner flag and immediately re-lints the current buffer.
 
 # Motivation
 
