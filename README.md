@@ -18,8 +18,8 @@ file:line:col: Severity: message
 ```lua
 return {
   {
-   'jduspmc/mplint.nvim',
-  dependencies = { 'mfussenegger/nvim-lint' },
+    'jduspmc/mplint.nvim',
+    dependencies = { 'mfussenegger/nvim-lint' },
     -- optional: lazy-load on mp files
     event = { 'BufReadPost', 'BufNewFile' },
     opts = {
