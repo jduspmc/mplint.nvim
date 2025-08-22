@@ -2,7 +2,7 @@
 
 MetaPost linter with three passes:
 
-1. **Compiler errors** (parse `.log`)
+1. **Compiler errors** (parse **`.log`**)
 2. **Style checks** (semicolon rules, TeX preamble lines)
 3. **Structure checks** (begin/end blocks, delimiters, verbatimtex/btex, simple assignment `=` vs `:=` heuristic)
 
@@ -29,7 +29,7 @@ MetaPost (and its TeX heritage) has idiosyncrasies that complicate static lintin
   Many statements need a `;`, but certain tokens at end-of-line (e.g., `endfor`, `fi`, `etex`) legitimately omit it.
 
 - **TeX preamble blending**  
-  Lines beginning with `\` (e.g., `\documentclass{...}`) are TeX, not MP, and **must not** end with `;`.
+  Lines beginning with `\` (e.g., `\documentclass{...}`) are TeX, not MetaPost, and **must not** end with `;`.
 
 - **Opaque regions**  
   `verbatimtex … etex` and `btex … etex` are treated as black boxes.
@@ -83,24 +83,19 @@ return {
 MetaPost often **cascades** errors: a single mistake (e.g., a missing `;` or an unclosed `enddef`) can derail parsing and produce **many** `! …` messages in the `.log`. In those cases, it’s usually more productive to fix the **first** real error and re-run.
 
 - `halt_on_error = true` → runs `mpost` with `--halt-on-error` and **stops at the first error**.  
-  Use this when the log explodes with follow-on errors caused by one typo.
+  Use this when the **`log`** explodes with follow-on errors caused by one typo.
 
 - `halt_on_error = false` (default) → runs with `--interaction=nonstopmode` and **shows all errors** in one pass.  
   Use this when you want the full picture or to scan for multiple independent issues.
 
-- `halt_on_error`
-  false (default): run mpost with --interaction=nonstopmode to surface all `.log` errors in one go. Many of these errors messages 
-  true: run with `-halt-on-error`, which stops on the first error (useful when you prefer shorter feedback loops).
+You can toggle this option at runtime:
+- `:MplintToggleHalt`: It flips the internal runner flag and immediately re-lints the current buffer.
 
 - Keymap (`line_diag_key`)
-  Default `<leader>gl`. Shows all diagnostics on the current line:
+  Default `<leader>gl`. Shows all diagnostics on the current line when runnig with `halt_on_error = false`.
 
 - Filetypes (`filetypes`)
   Defaults to { 'mp', 'metapost' }.
-
-## Runtime toggle
-- `:MplintToggleHalt`
-  It flips the internal runner flag and immediately re-lints the current buffer.
 
 # Motivation
 
