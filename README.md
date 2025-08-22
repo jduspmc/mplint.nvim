@@ -10,6 +10,8 @@ Diagnostics are emitted as gfortran-style lines:
 
 file:line:col: Severity: message
 
+![mplint demo](assets/mplint-demo.gif)
+
 ---
 
 ## What is MetaPost?
