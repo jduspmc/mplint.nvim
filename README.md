@@ -95,7 +95,7 @@ You can toggle this option at runtime:
   Default `<leader>gl`. Shows all diagnostics on the current line when runnig with `halt_on_error = false`.
 
 - Filetypes (`filetypes`).
-  Defaults to { 'mp', 'metapost' }.
+  Defaults to `{ 'mp', 'metapost' }`.
 
 # Motivation
 
