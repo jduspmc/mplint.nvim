@@ -80,15 +80,23 @@ return {
 
 # Options & Commands
 
+MetaPost often **cascades** errors: a single mistake (e.g., a missing `;` or an unclosed `enddef`) can derail parsing and produce **many** `! …` messages in the `.log`. In those cases, it’s usually more productive to fix the **first** real error and re-run.
+
+- `halt_on_error = true` → runs `mpost` with `--halt-on-error` and **stops at the first error**.  
+  Use this when the log explodes with follow-on errors caused by one typo.
+
+- `halt_on_error = false` (default) → runs with `--interaction=nonstopmode` and **shows all errors** in one pass.  
+  Use this when you want the full picture or to scan for multiple independent issues.
+
 - `halt_on_error`
-  false (default): run mpost with --interaction=nonstopmode to surface all `.log` errors in one go.
+  false (default): run mpost with --interaction=nonstopmode to surface all `.log` errors in one go. Many of these errors messages 
   true: run with `-halt-on-error`, which stops on the first error (useful when you prefer shorter feedback loops).
 
 - Keymap (`line_diag_key`)
   Default `<leader>gl`. Shows all diagnostics on the current line:
 
 - Filetypes (`filetypes`)
-  Defaults to { 'mp', 'metapost' }. Adjust to your setup if needed.
+  Defaults to { 'mp', 'metapost' }.
 
 ## Runtime toggle
 - `:MplintToggleHalt`
