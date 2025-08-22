@@ -83,13 +83,13 @@ return {
 MetaPost often **cascades** errors: a single mistake (e.g., a missing `;` or an unclosed `enddef`) can derail parsing and produce **many** `! …` messages in the `.log`. In those cases, it’s usually more productive to fix the **first** real error and re-run.
 
 - `halt_on_error = true` → runs `mpost` with `--halt-on-error` and **stops at the first error**.  
-  Use this when the **`log`** explodes with follow-on errors caused by one typo.
+  Use this when the **`.log`** explodes with follow-on errors caused by one typo.
 
 - `halt_on_error = false` (default) → runs with `--interaction=nonstopmode` and **shows all errors** in one pass.  
   Use this when you want the full picture or to scan for multiple independent issues.
 
 You can toggle this option at runtime:
-- `:MplintToggleHalt`: It flips the internal runner flag and immediately re-lints the current buffer.
+- `:MplintToggleHalt` → It flips the internal runner flag and immediately re-lints the current buffer.
 
 - Keymap (`line_diag_key`)
   Default `<leader>gl`. Shows all diagnostics on the current line when runnig with `halt_on_error = false`.
@@ -99,6 +99,6 @@ You can toggle this option at runtime:
 
 # Motivation
 
-I enjoy MetaPost and find it a more direct way to describe geometric drawings than large macro packages like TikZ. My goal with mplint.nvim is to provide a lightweight, helpful linter that makes it easier to learn and iterate with MetaPost—surfacing genuine mpost errors alongside gentle hints for common style/structure issues.
+I enjoy MetaPost and find it a more direct way to describe geometric drawings than large macro packages like TikZ. My goal with mplint.nvim is to provide a lightweight, helpful linter that makes it easier to learn and iterate with MetaPost, surfacing genuine mpost errors alongside gentle hints for common style/structure issues.
 
 License: MIT
