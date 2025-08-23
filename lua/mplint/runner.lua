@@ -108,16 +108,14 @@ local function find_last_unmatched_for(src)
 	return stack[#stack] or 0
 end
 
--- ------------ run mpost (vim.system only) ------------
+-- ------------ run mpost ------------
 local function run_mpost(path)
 	local flag = (mode == "halt") and "--halt-on-error" or "--interaction=nonstopmode"
 	local res = vim.system({ "mpost", flag, path }, { text = true }):wait()
-	-- If mpost isn't found, libuv spawn fails; Neovim returns code 127 on *nix.
 	if not res or res.code == 127 then
 		io.stderr:write(string.format("%s:1:1: Error: mpost not found in PATH\n", file))
 		os.exit(2)
 	end
-	-- Non-zero exit is fine in halt mode; we read the .log next either way.
 end
 
 -- ------------ PASS 1: parse .log (Errors) ------------
@@ -209,6 +207,7 @@ do
 		"verbatimtex",
 		"}",
 		":",
+		"=",
 	}
 	local function is_allowed_eol(flat)
 		for _, tok in ipairs(allowed_eol) do
@@ -220,7 +219,6 @@ do
 	end
 
 	local msg_missing = "(Possibly) Missing semicolon"
-	local msg_misplaced = "(Possibly) Misplaced semicolon"
 	local msg_preamble = "(Invalid) TeX preamble line ends with semicolon"
 
 	for ln, raw in ipairs(src) do
@@ -232,8 +230,7 @@ do
 				emit("Warning", file, ln, 1, msg_preamble)
 			end
 		else
-			-- NEW: def/vardef/primarydef/secondarydef/tertiarydef lines ending with '='
-			-- are allowed to omit a trailing semicolon
+			-- def/vardef/primarydef/secondarydef/tertiarydef lines ending with '=' are fine
 			local trimmed = rtrim(no_comm)
 			local starts_def = trimmed:match("^%s*def%f[%W]")
 				or trimmed:match("^%s*vardef%f[%W]")
@@ -242,8 +239,7 @@ do
 				or trimmed:match("^%s*tertiarydef%f[%W]")
 
 			if starts_def and trimmed:sub(-1) == "=" then
-			-- Allowed: no semicolon needed; skip the rest of semicolon checks
-			-- (still let other passes catch structural issues)
+			-- skip semicolon checks
 			else
 				-- Special-case: outputtemplate must end with ;
 				if no_comm:match("^%s*outputtemplate") then
@@ -257,16 +253,10 @@ do
 					if flat ~= "" then
 						local n = count_semis_outside_strings(no_comm)
 						local allowed = is_allowed_eol(flat)
-						if n == 0 then
-							if not allowed then
-								emit("Warning", file, ln, 1, msg_missing)
-							end
-						else
-							if not ends_with_semicolon_outside_strings(no_comm) and not allowed then
-								emit("Warning", file, ln, 1, msg_missing)
-							elseif allowed and ends_with_semicolon_outside_strings(no_comm) then
-								emit("Warning", file, ln, 1, msg_misplaced)
-							end
+						if n == 0 and not allowed then
+							emit("Warning", file, ln, 1, msg_missing)
+						elseif n > 0 and not ends_with_semicolon_outside_strings(no_comm) and not allowed then
+							emit("Warning", file, ln, 1, msg_missing)
 						end
 					end
 				end
