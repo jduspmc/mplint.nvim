@@ -21,9 +21,6 @@ file:line:col: Severity: message
 
 ![mplint demo](assets/mplint-demo.gif)
 
----
-
-
 ![mplint demo](assets/mplint-demo.gif)
 
 ---
@@ -117,8 +114,8 @@ return {
 MetaPost often **cascades** errors: a single mistake (e.g., a missing `;` or an unclosed `enddef`) can derail parsing and produce **many** `! …` messages in the `.log`. In those cases, it’s usually more productive to fix the **first** real error and re-run.
 
 - **`halt_on_error`**  
-  - `true`: run `mpost` with `--halt-on-error`, stop at the first error.  
-  - `false` (default): run with `--interaction=nonstopmode`, show all errors.  
+  - `true`: run `mpost` with `-halt-on-error`, stop at the first error.  
+  - `false` (default): run with `-interaction=nonstopmode`, show all errors.  
 
 - **`:MplintToggleHalt`**  
   Toggle between halt-on-error and nonstop mode, then re-lint immediately.  
@@ -153,6 +150,6 @@ MetaPost often **cascades** errors: a single mistake (e.g., a missing `;` or an 
 
 # Motivation
 
-I enjoy MetaPost and find it a more direct way to describe geometric drawings than large macro packages like TikZ. My goal with mplint.nvim is to provide a lightweight, helpful linter that makes it easier to learn and iterate with MetaPost, surfacing genuine mpost errors alongside gentle hints for common style/structure issues.
+I enjoy MetaPost and find it a more direct way to describe geometric drawings than large macro packages like TikZ. My goal with mplint.nvim is to provide a lightweight, helpful linter/formatter that makes it easier to learn and iterate with MetaPost, surfacing genuine **`mpost`** errors alongside gentle hints for common style/structure issues.
 
 License: MIT
