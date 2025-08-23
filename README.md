@@ -19,7 +19,7 @@ Diagnostics are emitted as gfortran-style lines:
 
 file:line:col: Severity: message
 
-![mplint demo](assets/mplint-demo.gif)
+![mplint demo](assets/mplint-linter.gif)
 
 ---
 
@@ -39,7 +39,7 @@ The formatter is lightweight and opinionated:
 - Supports **single-line blocks** (`begingroup … endgroup` on one line):  
   → no extra indent, but still spaced with blank lines
 
-![formatter demo](assets/mplint-format.gif)
+![formatter demo](assets/mplint-formatter.gif)
 
 ---
 
