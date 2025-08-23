@@ -21,8 +21,6 @@ file:line:col: Severity: message
 
 ![mplint demo](assets/mplint-demo.gif)
 
-![mplint demo](assets/mplint-demo.gif)
-
 ---
 
 ## Formatter
@@ -42,10 +40,6 @@ The formatter is lightweight and opinionated:
   → no extra indent, but still spaced with blank lines
 
 ![formatter demo](assets/mplint-format.gif)
-
-**Commands / Keymaps:**
-- `:MplintIndent` → re-format the current buffer  
-- `<leader>fm` → buffer-local keymap (default), configurable or disabled  
 
 ---
 
