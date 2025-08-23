@@ -6,7 +6,16 @@ function M.setup(opts)
 		line_diag_key = "<leader>gl", -- set false to disable
 		filetypes = { "mp", "metapost" }, -- which fts get mplint
 		events = { "BufWritePost", "InsertLeave" }, -- when to lint
+		-- Formatter opts
+		indent_width = 4,
+		indent_blank_lines = true, -- add blank lines before/after block
+		indent_key = "<leader>fm", -- set false to disable keymap
 	}, opts or {})
+
+	---------------------------------------------------------------------------
+	-- Linter
+	---------------------------------------------------------------------------
+
 	local lint = require("lint")
 	local parser = require("lint.parser")
 
@@ -24,9 +33,6 @@ function M.setup(opts)
 
 	-- mode flag for the runner
 	local mode_arg = (opts.halt_on_error and "--mplint-halt") or "--mplint-nonstop"
-
-	-- Use Vim's built-in 'mp' filetype so you keep highlighting
-	lint.linters_by_ft.mp = { "mplint" }
 
 	lint.linters.mplint = {
 		name = "mplint",
@@ -96,6 +102,39 @@ function M.setup(opts)
 				vim.keymap.set("n", key, function()
 					vim.diagnostic.open_float({ scope = "line", focus = false })
 				end, { buffer = ev.buf, desc = "mplint: line diagnostics" })
+			end,
+		})
+	end
+
+	---------------------------------------------------------------------------
+	-- Formatter
+	---------------------------------------------------------------------------
+	local function indent_current_buffer()
+		local fmt = require("mplint.formatter")
+		-- pass through your options; adapt names if your formatter expects different keys
+		fmt.format_buffer({
+			indent_width = opts.indent_width,
+			blank_lines = opts.indent_blank_lines,
+		})
+		require("lint").try_lint("mplint")
+	end
+
+	vim.api.nvim_create_user_command("MplintIndent", function()
+		indent_current_buffer()
+	end, { desc = "mplint: reindent MetaPost buffer" })
+
+	if opts.indent_key then
+		local ig = vim.api.nvim_create_augroup("mplint.nvim/indent_key", { clear = true })
+		vim.api.nvim_create_autocmd("FileType", {
+			group = ig,
+			pattern = opts.filetypes,
+			callback = function(ev)
+				vim.keymap.set(
+					"n",
+					opts.indent_key,
+					indent_current_buffer,
+					{ buffer = ev.buf, desc = "mplint: indent buffer" }
+				)
 			end,
 		})
 	end
