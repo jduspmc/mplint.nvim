@@ -146,4 +146,4 @@ MetaPost often **cascades** errors: a single mistake (e.g., a missing `;` or an 
 
 I enjoy MetaPost and find it a more direct way to describe geometric drawings than large macro packages like TikZ. My goal with mplint.nvim is to provide a lightweight, helpful linter/formatter that makes it easier to learn and iterate with MetaPost, surfacing genuine **`mpost`** errors alongside gentle hints for common style/structure issues.
 
-License: MIT
+License: [MIT](https://github.com/jduspmc/mplint.nvim/blob/main/LICENSE)
