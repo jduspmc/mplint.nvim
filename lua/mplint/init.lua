@@ -1,4 +1,4 @@
-local M = {}
+local M = {} -- TODO: Improve default syntax highlight. Implement image preview.
 
 function M.setup(opts)
 	opts = vim.tbl_deep_extend("force", {
