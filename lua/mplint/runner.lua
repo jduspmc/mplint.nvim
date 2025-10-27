@@ -98,7 +98,11 @@ local function find_last_unmatched_for(src)
 	end
 	for i = 1, #src do
 		local line = strip_for_scan(src[i])
-		if line:find("%f[%a]forsuffixes%f[^%w_]") or line:find("%f[%a]for%f[^%w_]") then
+		if
+			line:find("%f[%a]forsuffixes%f[^%w_]")
+			or line:find("%f[%a]for%f[^%w_]")
+			or line:find("%f[%a]forever%f[^%w_]")
+		then
 			stack[#stack + 1] = i
 		end
 		if line:find("%f[%a]endfor%f[^%w_]") and #stack > 0 then
