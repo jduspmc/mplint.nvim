@@ -15,6 +15,7 @@ local START_PATS = {
 	"^%s*def%f[%W]",
 	"^%s*for%f[%W]",
 	"^%s*forsuffixes%f[%W]",
+	"^%s*forever%f[%W]",
 	"^%s*verbatimtex%f[%W]",
 	"^%s*beginfig%s*%b()",
 	"^%s*if%f[%W]",
@@ -23,7 +24,6 @@ local START_PATS = {
 
 local END_PATS = {
 	"^%s*enddef%s*;?%s*$",
-	"^%s*endef%s*;?%s*$",
 	"^%s*endfor%s*;?%s*$",
 	"^%s*etex%s*;?%s*$",
 	"^%s*endfig%s*;?%s*$",
@@ -47,7 +47,6 @@ local function looks_single_line_block(l)
 	end
 	if
 		l:find("%f[%a]enddef%f[^%w_]")
-		or l:find("%f[%a]endef%f[^%w_]")
 		or l:find("%f[%a]endfor%f[^%w_]")
 		or l:find("%f[%a]fi%f[^%w_]")
 		or l:find("%f[%a]etex%f[^%w_]")
