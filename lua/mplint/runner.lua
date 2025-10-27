@@ -357,7 +357,7 @@ do
 			return
 		end
 
-		if tok == "for" or tok == "forsuffixes" then
+		if tok == "for" or tok == "forsuffixes" or tok == "forever" then
 			push(FOR, ln)
 			return
 		end
