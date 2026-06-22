@@ -1,12 +1,8 @@
-# Swap files
-*.swp
-*.swo
+# notes
+notes.txt
 
 # Backup files
 *~
 
 # Log files
 *.log
-
-# Lua compiled files
-*.luac

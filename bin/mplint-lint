@@ -1,0 +1,51 @@
+#!/usr/bin/env -S nvim -l
+
+local source = debug.getinfo(1, "S").source
+local script_path = source:gsub("^@", ""):gsub("\\", "/")
+local script_dir = script_path:match("(.+)/[^/]+$") or "."
+package.path = script_dir .. "/../lua/?.lua;" .. package.path
+
+local runner = require("mplint.runner")
+local engine = require("mplint.engine")
+
+if #arg < 1 then
+    io.stderr:write("Usage: mplint-lint <file.mp>\n")
+    os.exit(1)
+end
+
+local target_file = arg[1]
+local f = io.open(target_file, "r")
+if not f then os.exit(1) end
+
+local lines = {}
+for line in f:lines() do
+    lines[#lines + 1] = line:gsub('\r$', '')
+end
+f:close()
+
+local env, detected_tex = engine.get_workspace_env(target_file, lines)
+
+local flag = os.getenv("MPLINT_HALT") == "true" and "-halt-on-error" or "-interaction=nonstopmode"
+local explicit_tex = os.getenv("MPLINT_TEX")
+if not explicit_tex or explicit_tex == "" then
+    explicit_tex = detected_tex
+end
+
+local issues = runner.run_heuristics(lines)
+
+if vim.fn.executable('mpost') == 1 then
+    local log_lines = engine.run_compiler_sync(lines, env, flag, explicit_tex)
+    local compilation_errors = runner.parse_log(log_lines, lines)
+    vim.list_extend(issues, compilation_errors)
+else
+    table.insert(issues, {
+        lnum = 1,
+        col = 1,
+        severity = "ERROR",
+        message = "mpost not found in PATH",
+    })
+end
+
+for _, issue in ipairs(issues) do
+    print(string.format("%s:%d:%d: [%s] %s", target_file, issue.lnum, issue.col, issue.severity, issue.message))
+end

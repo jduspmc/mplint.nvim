@@ -1,0 +1,38 @@
+#!/usr/bin/env -S nvim -l
+
+-- Determine the directory containing this script to find the lua modules relative to it
+local script_path = debug.getinfo(1).source:sub(2):gsub("\\", "/")
+local script_dir = script_path:match("(.+)/[^/]+$") or "."
+package.path = script_dir .. "/../lua/?.lua;" .. package.path
+
+local formatter = require("mplint.formatter")
+
+local indent_width = 4
+local blank_lines = true
+
+-- Simple CLI argument parser
+local i = 1
+while i <= #arg do
+	if arg[i] == "--indent-width" or arg[i] == "-i" then
+		indent_width = tonumber(arg[i + 1]) or 4
+		i = i + 2
+	elseif arg[i] == "--no-blank-lines" then
+		blank_lines = false
+		i = i + 1
+	else
+		i = i + 1
+	end
+end
+
+local input = io.read("*all")
+local ok, output = pcall(formatter.format_text, input, {
+	indent_width = indent_width,
+	blank_lines = blank_lines,
+})
+
+if not ok then
+	io.stderr:write("Error formatting: " .. tostring(output) .. "\n")
+	os.exit(1)
+end
+
+io.write(output)

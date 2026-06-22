@@ -1,143 +1,216 @@
-local M = {} -- TODO: Improve default syntax highlight. Implement image preview.
+-- Main entry to plugin.
+-- Responsible for configuring mplint, selecting the linting backend,
+-- registering autocommands and user commands, and integrating with
+-- nvim-lint and conform.nvim.
 
+local M = {}
+
+-- find linter bin
+local source = debug.getinfo(1, 'S').source
+local current_file_path = source:gsub('^@', ''):gsub('\\', '/')
+local plugin_root = current_file_path:match '(.+)/lua/mplint/[^/]+$' or vim.fn.getcwd()
+local binary_path = vim.fs.joinpath(plugin_root, 'bin', 'mplint-lint')
+
+---@class MplintOpts Configuration options for the mplint plugin.
+---@field linter_backend? "'manual'"|"'nvim-lint'" The engine used to process linting (default: 'manual')
+---@field halt_on_error? boolean Stop linting at the very first syntax error (default: false)
+---@field filetypes? string[] Target Neovim filetypes to attach the plugin to (default: {'mp'})
+---@field events? string[] Neovim autocommand events that trigger the linter (default: {'BufWritePost', 'InsertLeave'})
+---@field enabled? boolean Turn the automated linting process on or off (default: true)
+---@field tex_engine? string|nil Internal LaTeX/TeX compiler variant to target (default: nil)
+---@field indent_width? integer Number of spaces used for block structural indentations (default: 4)
+---@field blank_lines? boolean Dynamically inject blank spacing gaps around code blocks (default: false)
+---@field preview_enabled? boolean Turn the automated previewer on or off (default: true)
+---@field preview_scale? number Default image scaling factor used by the preview window (default: 1)
+
+--- Initialize and configure the mplint plugin environment.
+--- Sets up internal state routing, diagnostics autocommands, user commands, and conform.nvim bindings.
+--- @param opts? MplintOpts Custom user preferences override table (falls back to defaults if omitted)
 function M.setup(opts)
-	opts = vim.tbl_deep_extend("force", {
-		halt_on_error = false, -- nonstop by default
-		line_diag_key = "<leader>gl", -- set false to disable
-		filetypes = { "mp", "metapost" }, -- which fts get mplint
-		events = { "BufWritePost", "InsertLeave" }, -- when to lint
-		-- Formatter opts
-		indent_width = 4,
-		indent_blank_lines = true, -- add blank lines before/after block
-		indent_key = "<leader>fm", -- set false to disable keymap
-	}, opts or {})
+  opts = vim.tbl_deep_extend('force', {
+    enabled = true,
+    linter_backend = 'manual', -- Options: 'nvim-lint' or 'manual'
+    halt_on_error = false,
+    events = { 'BufWritePost', 'InsertLeave' },
+    filetypes = { 'mp' },
+    tex_engine = nil,
+    indent_width = 4,
+    blank_lines = false,
+    preview_enabled = false,
+    preview_scale = 1,
+  }, opts or {})
 
-	---------------------------------------------------------------------------
-	-- Linter
-	---------------------------------------------------------------------------
+  if opts.linter_backend ~= 'manual' and opts.linter_backend ~= 'nvim-lint' then
+    error(("mplint: invalid linter_backend '%s'"):format(tostring(opts.linter_backend)))
+  end
 
-	local lint = require("lint")
-	local parser = require("lint.parser")
+  local linter = require 'mplint.linter'
+  linter.opts.halt_on_error = opts.halt_on_error
+  linter.opts.enabled = opts.enabled
+  linter.opts.tex_engine = opts.tex_engine
 
-	-- gfortran-style parser
-	local pattern = "^([^:]+):(%d+):(%d+):%s+([^:]+):%s+(.*)$"
-	local groups = { "file", "lnum", "col", "severity", "message" }
-	local severity_map = {
-		["Error"] = vim.diagnostic.severity.ERROR,
-		["Warning"] = vim.diagnostic.severity.WARN,
-	}
+  local previewer = require 'mplint.previewer'
+  previewer.opts.enabled = opts.preview_enabled
+  previewer.opts.tex_engine = opts.tex_engine
+  previewer.opts.scale = opts.preview_scale
 
-	-- runner.lua path
-	local here = debug.getinfo(1, "S").source:sub(2)
-	local runner = here:gsub("init%.lua$", "runner.lua")
+  -- Build the filetype set map
+  local ft_set = {}
+  for _, ft in ipairs(opts.filetypes) do
+    ft_set[ft] = true
+  end
 
-	-- mode flag for the runner
-	local mode_arg = (opts.halt_on_error and "--mplint-halt") or "--mplint-nonstop"
+  ---------------------------------------------------------------------------
+  -- Environment Detection & Linter Routing Functions
+  ---------------------------------------------------------------------------
+  -- check if lint exists
+  local has_nvim_lint, nvim_lint = pcall(require, 'lint')
 
-	lint.linters.mplint = {
-		name = "mplint",
-		cmd = "nvim",
-		args = { "-l", runner, "--", mode_arg }, -- nvim -l runner.lua -- <flag> <file>
-		stdin = false,
-		append_fname = true,
-		stream = "stderr",
-		ignore_exitcode = true,
-		parser = parser.from_pattern(pattern, groups, severity_map, { source = "mplint" }),
-	}
+  -- We wrap the nvim-lint definition in a helper function so we can conditionalize it
+  local function setup_nvim_lint()
+    if has_nvim_lint then
+      nvim_lint.linters.mplint = {
+        name = 'mplint',
+        cmd = 'nvim',
+        args = { '-l', binary_path },
+        stdin = false,
+        append_fname = true,
+        stream = 'stderr',
+        ignore_exitcode = true,
+        env = {
+          MPLINT_HALT = 'false',
+          MPLINT_TEX = '',
+        },
+        parser = require('lint.parser').from_pattern('([^:]+):(%d+):(%d+):%s*%[([A-Z]+)%]%s*(.*)', { 'file', 'lnum', 'col', 'severity', 'message' }, {
+          ['WARN'] = vim.diagnostic.severity.WARN,
+          ['ERROR'] = vim.diagnostic.severity.ERROR,
+        }, { source = 'mplint' }),
+      }
+    end
+  end
 
-	-- attach to requested filetypes without clobbering others
-	lint.linters_by_ft = lint.linters_by_ft or {}
-	for _, ft in ipairs(opts.filetypes) do
-		local list = lint.linters_by_ft[ft] or {}
-		if not vim.tbl_contains(list, "mplint") then
-			table.insert(list, "mplint")
-		end
-		lint.linters_by_ft[ft] = list
-	end
+  local function trigger_lint()
+    if not linter.opts.enabled then return end
 
-	-- autolint only for our filetypes
-	local ft_set = {}
-	for _, ft in ipairs(opts.filetypes) do
-		ft_set[ft] = true
-	end
+    local current_ft = vim.api.nvim_get_option_value('filetype', { buf = 0 })
+    if not ft_set[current_ft] then return end
 
-	local grp = vim.api.nvim_create_augroup("mplint.nvim/autolint", { clear = true })
-	vim.api.nvim_create_autocmd(opts.events, {
-		group = grp,
-		callback = function(ev)
-			local ft = vim.bo[ev.buf].filetype
-			if ft_set[ft] and vim.bo[ev.buf].modifiable then
-				require("lint").try_lint("mplint")
-			end
-		end,
-	})
+    -- ROUTING ENGINE: Choose your testing sandbox
+    if opts.linter_backend == 'nvim-lint' and has_nvim_lint then
+      -- Sync environment variables right before nvim-lint fires
+      local lint_def = nvim_lint.linters.mplint
+      if not lint_def then return end
+      lint_def.env.MPLINT_HALT = tostring(linter.opts.halt_on_error)
+      lint_def.env.MPLINT_TEX = linter.opts.tex_engine or ''
 
-	-- toggle halt <-> nonstop
-	vim.api.nvim_create_user_command("MplintToggleHalt", function()
-		local l = require("lint").linters.mplint
-		if not l then
-			return
-		end
-		local was_halt = vim.tbl_contains(l.args, "--mplint-halt")
-		for i, a in ipairs(l.args) do
-			if a == "--mplint-halt" then
-				l.args[i] = "--mplint-nonstop"
-			end
-			if a == "--mplint-nonstop" then
-				l.args[i] = "--mplint-halt"
-			end
-		end
-		vim.notify("mplint mode: " .. (was_halt and "nonstopmode" or "halt-on-error"))
-		require("lint").try_lint("mplint") -- re-run immediately
-	end, {})
+      nvim_lint.try_lint 'mplint'
+    else
+      -- CUSTOM SANDBOX: Runs your manual linter execution logic completely decoupled from nvim-lint
+      if linter.lint then linter.lint() end
+    end
+  end
 
-	-- buffer-local keymap (optional)
-	if opts.line_diag_key ~= false then
-		local key = opts.line_diag_key or "<leader>gl"
-		local kgrp = vim.api.nvim_create_augroup("mplint.nvim/keymap", { clear = true })
-		vim.api.nvim_create_autocmd("FileType", {
-			group = kgrp,
-			pattern = opts.filetypes,
-			callback = function(ev)
-				vim.keymap.set("n", key, function()
-					vim.diagnostic.open_float({ scope = "line", focus = false })
-				end, { buffer = ev.buf, desc = "mplint: line diagnostics" })
-			end,
-		})
-	end
+  -- Only initialize nvim-lint if the user explicitly wants it as their backend
+  if opts.linter_backend == 'nvim-lint' then setup_nvim_lint() end
 
-	---------------------------------------------------------------------------
-	-- Formatter
-	---------------------------------------------------------------------------
-	local function indent_current_buffer()
-		local fmt = require("mplint.formatter")
-		-- pass through your options; adapt names if your formatter expects different keys
-		fmt.format_buffer({
-			indent_width = opts.indent_width,
-			blank_lines = opts.indent_blank_lines,
-		})
-		require("lint").try_lint("mplint")
-	end
+  ---------------------------------------------------------------------------
+  -- Autocommands (Runs seamlessly for BOTH backends via our router)
+  ---------------------------------------------------------------------------
+  local au_group = vim.api.nvim_create_augroup('MplintEventGroup', { clear = true })
+  if #opts.events > 0 then vim.api.nvim_create_autocmd(opts.events, {
+    group = au_group,
+    callback = trigger_lint,
+  }) end
 
-	vim.api.nvim_create_user_command("MplintIndent", function()
-		indent_current_buffer()
-	end, { desc = "mplint: reindent MetaPost buffer" })
+  vim.api.nvim_create_autocmd('BufWipeout', {
+    group = au_group,
+    callback = function(args)
+      local bufnr = args.buf
+      pcall(function() require('mplint.linter').cancel(bufnr) end)
+      pcall(function() require('mplint.previewer').cancel(bufnr) end)
+    end,
+  })
 
-	if opts.indent_key then
-		local ig = vim.api.nvim_create_augroup("mplint.nvim/indent_key", { clear = true })
-		vim.api.nvim_create_autocmd("FileType", {
-			group = ig,
-			pattern = opts.filetypes,
-			callback = function(ev)
-				vim.keymap.set(
-					"n",
-					opts.indent_key,
-					indent_current_buffer,
-					{ buffer = ev.buf, desc = "mplint: indent buffer" }
-				)
-			end,
-		})
-	end
+  ---------------------------------------------------------------------------
+  -- Formatter Integration
+  ---------------------------------------------------------------------------
+  local has_conform, conform = pcall(require, 'conform')
+  if has_conform then
+    conform.formatters.mplint = {
+      format = function(_, _, lines, callback)
+        local text = table.concat(lines, '\n')
+        local formatter = require 'mplint.formatter'
+        local ok, formatted = pcall(formatter.format_text, text, {
+          indent_width = opts.indent_width,
+          blank_lines = opts.blank_lines,
+        })
+        if not ok then
+          callback(formatted, nil)
+          return
+        end
+
+        local out_lines = {}
+        for line in (formatted .. '\n'):gmatch '(.-)\r?\n' do
+          table.insert(out_lines, line)
+        end
+        if #out_lines > 0 and out_lines[#out_lines] == '' then table.remove(out_lines) end
+        callback(nil, out_lines)
+      end,
+    }
+  end
+
+  local function indent_current_buffer()
+    local fmt = require 'mplint.formatter'
+    fmt.format_buffer({
+      indent_width = opts.indent_width,
+      blank_lines = opts.blank_lines,
+    }, 0)
+    trigger_lint()
+  end
+
+  ---------------------------------------------------------------------------
+  -- User Commands
+  ---------------------------------------------------------------------------
+  vim.api.nvim_create_user_command('MplintToggleHalt', function()
+    linter.opts.halt_on_error = not linter.opts.halt_on_error
+    vim.notify('mplint mode: ' .. (linter.opts.halt_on_error and 'halt-on-error' or 'nonstopmode'), vim.log.levels.INFO)
+    trigger_lint()
+  end, {})
+
+  vim.api.nvim_create_user_command('MplintToggleLint', function()
+    linter.opts.enabled = not linter.opts.enabled
+    vim.notify('mplint: ' .. (linter.opts.enabled and 'enabled' or 'disabled'), vim.log.levels.INFO)
+    if not linter.opts.enabled then
+      require('mplint.ui').clear(0)
+    else
+      trigger_lint()
+    end
+  end, {})
+
+  vim.api.nvim_create_user_command('MplintIndent', indent_current_buffer, {
+    desc = 'mplint: Format MetaPost buffer',
+  })
+
+  if opts.preview_enabled then
+    vim.api.nvim_create_user_command('MplintPreview', function(cmd)
+      local scale
+
+      if cmd.args ~= '' then
+        scale = tonumber(cmd.args)
+        if not scale then
+          vim.notify('mplint: Scale must be a number.', vim.log.levels.ERROR)
+          return
+        end
+      end
+
+      previewer.preview {
+        scale = scale,
+      }
+    end, {
+      nargs = '?',
+      desc = 'mplint: Preview MetaPost output image',
+    })
+  end
 end
 
 return M
